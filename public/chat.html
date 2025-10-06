@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>채팅 - 실시간 채팅 웹사이트</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="guest-container">
+            <!-- 헤더 -->
+            <div class="guest-header">
+                <div class="guest-title" id="chatTitle">고객 상담 채팅</div>
+                <button class="logout-btn" onclick="logout()">로그아웃</button>
+            </div>
+            
+            <!-- 채팅 메시지 영역 -->
+            <div class="chat-messages" id="chatMessages">
+                <div class="text-center mt-20">
+                    <p>채팅을 시작하세요. 관리자가 곧 응답해드릴 것입니다.</p>
+                </div>
+            </div>
+            
+            <!-- 메시지 입력 영역 -->
+            <div class="chat-input">
+                <input type="text" id="messageInput" placeholder="메시지를 입력하세요...">
+                <button class="send-btn" onclick="sendMessage()">전송</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        let socket;
+        let currentChatroomId = null;
+        let currentUser = null;
+        
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initializeGuest();
+        });
+        
+        // 게스트 초기화
+        async function initializeGuest() {
+            try {
+                // 채팅방 정보 가져오기
+                const chatroomResponse = await fetch('/api/guest/chatroom');
+                if (chatroomResponse.status === 401) {
+                    window.location.href = '/webchat/';
+                    return;
+                }
+                
+                if (chatroomResponse.status === 404) {
+                    alert('채팅방을 찾을 수 없습니다. 관리자에게 문의하세요.');
+                    return;
+                }
+                
+                const chatroom = await chatroomResponse.json();
+                currentChatroomId = chatroom.id;
+                
+                // 채팅방 제목 설정
+                document.getElementById('chatTitle').textContent = chatroom.name;
+                
+                // Socket.io 연결
+                socket = io();
+                
+                // 채팅방 입장
+                socket.emit('join-room', currentChatroomId);
+                
+                // 메시지 입력 이벤트
+                document.getElementById('messageInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        sendMessage();
+                    }
+                });
+                
+                // Socket 이벤트 리스너
+                socket.on('receive-message', (message) => {
+                    displayMessage(message);
+                });
+                
+                // 메시지 로드
+                await loadMessages(currentChatroomId);
+                
+            } catch (error) {
+                console.error('초기화 오류:', error);
+                alert('페이지 로드 중 오류가 발생했습니다.');
+            }
+        }
+        
+        // 메시지 로드
+        async function loadMessages(chatroomId) {
+            try {
+                const response = await fetch(`/api/messages/${chatroomId}`);
+                const messages = await response.json();
+                
+                const chatMessages = document.getElementById('chatMessages');
+                chatMessages.innerHTML = '';
+                
+                if (messages.length === 0) {
+                    chatMessages.innerHTML = `
+                        <div class="text-center mt-20">
+                            <p>채팅을 시작하세요. 관리자가 곧 응답해드릴 것입니다.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                messages.forEach(message => {
+                    displayMessage(message);
+                });
+                
+                // 스크롤을 맨 아래로
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+            } catch (error) {
+                console.error('메시지 로드 오류:', error);
+            }
+        }
+        
+        // 메시지 전송
+        async function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+            
+            if (!message || !currentChatroomId) return;
+            
+            try {
+                socket.emit('send-message', {
+                    chatroomId: currentChatroomId,
+                    message: message,
+                    senderId: 2 // 게스트 ID (실제로는 세션에서 가져와야 함)
+                });
+                
+                messageInput.value = '';
+                
+            } catch (error) {
+                console.error('메시지 전송 오류:', error);
+            }
+        }
+        
+        // 메시지 표시
+        function displayMessage(message) {
+            const chatMessages = document.getElementById('chatMessages');
+            
+            // 첫 메시지인 경우 안내 텍스트 제거
+            if (chatMessages.children.length === 1 && chatMessages.children[0].classList.contains('text-center')) {
+                chatMessages.innerHTML = '';
+            }
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            
+            // 메시지가 현재 사용자(게스트)의 것인지 확인
+            const isOwn = message.sender_role === 'guest';
+            if (isOwn) {
+                messageDiv.classList.add('own');
+            }
+            
+            const time = new Date(message.created_at).toLocaleTimeString('ko-KR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            messageDiv.innerHTML = `
+                <div class="message-avatar">
+                    ${message.sender_name.charAt(0)}
+                </div>
+                <div class="message-content">
+                    <div class="message-sender">${message.sender_name}</div>
+                    <div class="message-text">${message.message}</div>
+                    <div class="message-time">${time}</div>
+                </div>
+            `;
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // 로그아웃
+        async function logout() {
+            try {
+                await fetch('/api/logout', { method: 'POST' });
+                window.location.href = '/webchat/';
+            } catch (error) {
+                console.error('로그아웃 오류:', error);
+            }
+        }
+    </script>
+</body>
+</html>
