@@ -34,7 +34,7 @@ app.use(session({
 app.use('/webchat', express.static('public'));
 
 // 데이터베이스 연결 설정
-const dbConfig = {
+const dbConfig = process.env.DATABASE_URL || {
     host: process.env.PGHOST || 'localhost',
     user: process.env.PGUSER || '120191590DB',
     password: process.env.PGPASSWORD || '123456',
