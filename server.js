@@ -1,7 +1,7 @@
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
-const mysql = require('mysql2/promise');
+const mysql = require('pg');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
 const cors = require('cors');
@@ -35,11 +35,12 @@ app.use('/webchat', express.static('public'));
 
 // 데이터베이스 연결 설정
 const dbConfig = {
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || '120191590DB',
-    password: process.env.DB_PASSWORD || '123456',
-    database: process.env.DB_NAME || '120191590DB',
-    charset: 'utf8mb4'
+    host: process.env.PGHOST || 'localhost',
+    user: process.env.PGUSER || '120191590DB',
+    password: process.env.PGPASSWORD || '123456',
+    database: process.env.PGDATABASE || '120191590DB',
+    port: process.env.PGPORT || 5432,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 };
 
 let db;
@@ -47,7 +48,8 @@ let db;
 // 데이터베이스 연결
 async function connectDB() {
     try {
-        db = await mysql.createConnection(dbConfig);
+        db = new mysql.Client(dbConfig);
+        await db.connect();
         console.log('데이터베이스 연결 성공');
     } catch (error) {
         console.error('데이터베이스 연결 실패:', error);
