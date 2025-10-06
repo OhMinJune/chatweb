@@ -40,7 +40,10 @@ const dbConfig = process.env.DATABASE_URL || {
     password: process.env.PGPASSWORD || '123456',
     database: process.env.PGDATABASE || '120191590DB',
     port: process.env.PGPORT || 5432,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    connectionTimeoutMillis: 10000,
+    idleTimeoutMillis: 30000,
+    max: 5
 };
 
 let db;
@@ -74,8 +77,17 @@ function requireAuth(req, res, next) {
 
 // 로그인
 app.post('/api/login', async (req, res) => {
+    // 타임아웃 설정
+    req.setTimeout(30000);
+    res.setTimeout(30000);
+    
     try {
         const { username, password } = req.body;
+        
+        // 데이터베이스 연결 확인
+        if (!db) {
+            return res.status(500).json({ error: '데이터베이스 연결이 없습니다.' });
+        }
         
         const result = await db.query(
             'SELECT * FROM users WHERE username = $1',
@@ -306,6 +318,9 @@ io.on('connection', (socket) => {
 // 서버 시작
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', async () => {
-    await connectDB();
     console.log(`서버가 포트 ${PORT}에서 실행 중입니다.`);
+    // 데이터베이스 연결을 백그라운드에서 처리
+    setTimeout(async () => {
+        await connectDB();
+    }, 1000);
 });
