@@ -176,12 +176,13 @@ app.get('/api/guest/chatroom', requireAuth, async (req, res) => {
             return res.status(403).json({ error: '권한이 없습니다.' });
         }
         
-        const [rows] = await db.execute(`
+        const result = await db.query(`
             SELECT c.*, u.name as admin_name
             FROM chatrooms c
             JOIN users u ON c.admin_id = u.id
-            WHERE c.guest_id = ?
+            WHERE c.guest_id = $1
         `, [req.session.user.id]);
+        const rows = result.rows;
         
         if (rows.length === 0) {
             return res.status(404).json({ error: '채팅방을 찾을 수 없습니다.' });
@@ -201,22 +202,23 @@ app.get('/api/messages/:chatroomId', requireAuth, async (req, res) => {
         const { chatroomId } = req.params;
         
         // 채팅방 접근 권한 확인
-        const [chatroomRows] = await db.execute(
-            'SELECT * FROM chatrooms WHERE id = ? AND (admin_id = ? OR guest_id = ?)',
+        const chatroomResult = await db.query(
+            'SELECT * FROM chatrooms WHERE id = $1 AND (admin_id = $2 OR guest_id = $3)',
             [chatroomId, req.session.user.id, req.session.user.id]
         );
         
-        if (chatroomRows.length === 0) {
+        if (chatroomResult.rows.length === 0) {
             return res.status(403).json({ error: '채팅방에 접근할 권한이 없습니다.' });
         }
         
-        const [rows] = await db.execute(`
+        const result = await db.query(`
             SELECT m.*, u.name as sender_name, u.role as sender_role
             FROM messages m
             JOIN users u ON m.sender_id = u.id
-            WHERE m.chatroom_id = ?
+            WHERE m.chatroom_id = $1
             ORDER BY m.created_at ASC
         `, [chatroomId]);
+        const rows = result.rows;
         
         res.json(rows);
         
@@ -261,22 +263,23 @@ io.on('connection', (socket) => {
             const { chatroomId, message, senderId } = data;
             
             // 메시지 저장
-            const [result] = await db.execute(
-                'INSERT INTO messages (chatroom_id, sender_id, message) VALUES (?, ?, ?)',
+            const result = await db.query(
+                'INSERT INTO messages (chatroom_id, sender_id, message) VALUES ($1, $2, $3) RETURNING id',
                 [chatroomId, senderId, message]
             );
             
             // 메시지 정보 조회
-            const [rows] = await db.execute(`
+            const messageResult = await db.query(`
                 SELECT m.*, u.name as sender_name, u.role as sender_role
                 FROM messages m
                 JOIN users u ON m.sender_id = u.id
-                WHERE m.id = ?
-            `, [result.insertId]);
+                WHERE m.id = $1
+            `, [result.rows[0].id]);
+            const rows = messageResult.rows;
             
             // 채팅방 업데이트 시간 갱신
-            await db.execute(
-                'UPDATE chatrooms SET updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+            await db.query(
+                'UPDATE chatrooms SET updated_at = CURRENT_TIMESTAMP WHERE id = $1',
                 [chatroomId]
             );
             
