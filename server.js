@@ -72,8 +72,8 @@ app.post('/api/login', async (req, res) => {
     try {
         const { username, password } = req.body;
         
-        const [rows] = await db.execute(
-            'SELECT * FROM users WHERE username = ?',
+        const [rows] = await db.query(
+            'SELECT * FROM users WHERE username = $1',
             [username]
         );
         
@@ -113,12 +113,12 @@ app.post('/api/register', async (req, res) => {
         const { username, password, name, phone } = req.body;
         
         // 중복 사용자명 확인
-        const [existingUsers] = await db.execute(
-            'SELECT id FROM users WHERE username = ?',
+        const existingUsers = await db.query(
+            'SELECT id FROM users WHERE username = $1',
             [username]
         );
         
-        if (existingUsers.length > 0) {
+        if (existingUsers.rows.length > 0) {
             return res.status(400).json({ error: '이미 존재하는 사용자명입니다.' });
         }
         
@@ -126,8 +126,8 @@ app.post('/api/register', async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
         
         // 사용자 생성
-        const [result] = await db.execute(
-            'INSERT INTO users (username, password, name, phone, role) VALUES (?, ?, ?, ?, ?)',
+        const result = await db.query(
+            'INSERT INTO users (username, password, name, phone, role) VALUES ($1, $2, $3, $4, $5) RETURNING id',
             [username, hashedPassword, name, phone, 'guest']
         );
         
@@ -152,11 +152,11 @@ app.get('/api/admin/chatrooms', requireAuth, async (req, res) => {
             return res.status(403).json({ error: '권한이 없습니다.' });
         }
         
-        const [rows] = await db.execute(`
+        const rows = await db.query(`
             SELECT c.*, u.name as guest_name, u.username as guest_username
             FROM chatrooms c
             LEFT JOIN users u ON c.guest_id = u.id
-            WHERE c.admin_id = ?
+            WHERE c.admin_id = $1
             ORDER BY c.updated_at DESC
         `, [req.session.user.id]);
         
