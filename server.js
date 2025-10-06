@@ -72,10 +72,11 @@ app.post('/api/login', async (req, res) => {
     try {
         const { username, password } = req.body;
         
-        const [rows] = await db.query(
+        const result = await db.query(
             'SELECT * FROM users WHERE username = $1',
             [username]
         );
+        const rows = result.rows;
         
         if (rows.length === 0) {
             return res.status(401).json({ error: '사용자를 찾을 수 없습니다.' });
@@ -152,7 +153,7 @@ app.get('/api/admin/chatrooms', requireAuth, async (req, res) => {
             return res.status(403).json({ error: '권한이 없습니다.' });
         }
         
-        const rows = await db.query(`
+        const result = await db.query(`
             SELECT c.*, u.name as guest_name, u.username as guest_username
             FROM chatrooms c
             LEFT JOIN users u ON c.guest_id = u.id
@@ -160,7 +161,7 @@ app.get('/api/admin/chatrooms', requireAuth, async (req, res) => {
             ORDER BY c.updated_at DESC
         `, [req.session.user.id]);
         
-        res.json(rows);
+        res.json(result.rows);
         
     } catch (error) {
         console.error('채팅방 목록 조회 오류:', error);
