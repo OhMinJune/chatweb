@@ -48,11 +48,16 @@ let db;
 // 데이터베이스 연결
 async function connectDB() {
     try {
-        db = new mysql.Client(dbConfig);
+        if (process.env.DATABASE_URL) {
+            db = new mysql.Client(process.env.DATABASE_URL);
+        } else {
+            db = new mysql.Client(dbConfig);
+        }
         await db.connect();
         console.log('데이터베이스 연결 성공');
     } catch (error) {
         console.error('데이터베이스 연결 실패:', error);
+        // 연결 실패해도 서버는 계속 실행
     }
 }
 
