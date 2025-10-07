@@ -81,6 +81,11 @@
                     displayMessage(message);
                 });
                 
+                // 채팅방 목록 업데이트
+                socket.on('chatroom-updated', () => {
+                    loadChatrooms();
+                });
+                
             } catch (error) {
                 console.error('초기화 오류:', error);
                 alert('페이지 로드 중 오류가 발생했습니다.');

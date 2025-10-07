@@ -193,19 +193,47 @@ app.get('/api/guest/chatroom', requireAuth, async (req, res) => {
             return res.status(403).json({ error: '권한이 없습니다.' });
         }
         
-        const result = await db.query(`
+        let result = await db.query(`
             SELECT c.*, u.name as admin_name
             FROM chatrooms c
             JOIN users u ON c.admin_id = u.id
             WHERE c.guest_id = $1
         `, [req.session.user.id]);
-        const rows = result.rows;
+        let rows = result.rows;
         
+        // 채팅방이 없으면 새로 생성
         if (rows.length === 0) {
-            return res.status(404).json({ error: '채팅방을 찾을 수 없습니다.' });
+            // 관리자 ID 찾기 (첫 번째 관리자)
+            const adminResult = await db.query(
+                'SELECT id FROM users WHERE role = $1 LIMIT 1',
+                ['admin']
+            );
+            
+            if (adminResult.rows.length === 0) {
+                return res.status(500).json({ error: '관리자를 찾을 수 없습니다.' });
+            }
+            
+            const adminId = adminResult.rows[0].id;
+            
+            // 새 채팅방 생성
+            const createResult = await db.query(`
+                INSERT INTO chatrooms (name, admin_id, guest_id) 
+                VALUES ($1, $2, $3) 
+                RETURNING *
+            `, [`고객상담 ${req.session.user.name}`, adminId, req.session.user.id]);
+            
+            // 관리자 정보와 함께 반환
+            const newChatroom = createResult.rows[0];
+            const adminInfo = await db.query(
+                'SELECT name FROM users WHERE id = $1',
+                [adminId]
+            );
+            
+            newChatroom.admin_name = adminInfo.rows[0].name;
+            res.json(newChatroom);
+        } else {
+            res.json(rows[0]);
         }
-        
-        res.json(rows[0]);
         
     } catch (error) {
         console.error('채팅방 정보 조회 오류:', error);
@@ -302,6 +330,9 @@ io.on('connection', (socket) => {
             
             // 채팅방의 모든 사용자에게 메시지 전송
             io.to(chatroomId).emit('receive-message', rows[0]);
+            
+            // 관리자에게 채팅방 목록 업데이트 알림
+            io.emit('chatroom-updated', { chatroomId });
             
         } catch (error) {
             console.error('메시지 전송 오류:', error);
