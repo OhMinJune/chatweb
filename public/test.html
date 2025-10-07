@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>테스트 페이지</title>
+</head>
+<body>
+    <h1>깃허브 페이지스 테스트</h1>
+    <p>이 페이지가 보이면 깃허브 페이지스가 정상 작동 중입니다.</p>
+    
+    <h2>로컬 스토리지 테스트</h2>
+    <button onclick="testLocalStorage()">로컬 스토리지 테스트</button>
+    <div id="result"></div>
+    
+    <script>
+        function testLocalStorage() {
+            try {
+                // 로컬 스토리지 테스트
+                localStorage.setItem('test', 'success');
+                const value = localStorage.getItem('test');
+                
+                if (value === 'success') {
+                    document.getElementById('result').innerHTML = 
+                        '<p style="color: green;">✅ 로컬 스토리지 정상 작동!</p>';
+                } else {
+                    document.getElementById('result').innerHTML = 
+                        '<p style="color: red;">❌ 로컬 스토리지 오류</p>';
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = 
+                    '<p style="color: red;">❌ 오류: ' + error.message + '</p>';
+            }
+        }
+        
+        // 페이지 로드 시 자동 테스트
+        window.onload = function() {
+            console.log('페이지 로드 완료');
+            testLocalStorage();
+        };
+    </script>
+</body>
+</html>
