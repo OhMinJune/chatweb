@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>실시간 채팅 웹사이트</title>
+    <title>실시간 채팅 웹사이트 (정적 버전)</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -77,6 +77,97 @@
     </div>
 
     <script>
+        // 로컬 스토리지에서 사용자 데이터 관리
+        class UserManager {
+            constructor() {
+                this.users = this.loadUsers();
+                this.currentUser = this.loadCurrentUser();
+            }
+
+            loadUsers() {
+                const users = localStorage.getItem('chatweb_users');
+                if (!users) {
+                    // 기본 사용자 데이터 생성
+                    const defaultUsers = [
+                        {
+                            id: 1,
+                            username: 'admin',
+                            password: 'admin123', // 실제로는 해시화되어야 함
+                            name: '관리자',
+                            phone: '010-0000-0000',
+                            role: 'admin'
+                        },
+                        {
+                            id: 2,
+                            username: 'guest1',
+                            password: 'guest123',
+                            name: '게스트1',
+                            phone: '010-1111-1111',
+                            role: 'guest'
+                        }
+                    ];
+                    localStorage.setItem('chatweb_users', JSON.stringify(defaultUsers));
+                    return defaultUsers;
+                }
+                return JSON.parse(users);
+            }
+
+            saveUsers() {
+                localStorage.setItem('chatweb_users', JSON.stringify(this.users));
+            }
+
+            loadCurrentUser() {
+                const user = localStorage.getItem('chatweb_current_user');
+                return user ? JSON.parse(user) : null;
+            }
+
+            saveCurrentUser(user) {
+                if (user) {
+                    localStorage.setItem('chatweb_current_user', JSON.stringify(user));
+                } else {
+                    localStorage.removeItem('chatweb_current_user');
+                }
+                this.currentUser = user;
+            }
+
+            login(username, password) {
+                const user = this.users.find(u => u.username === username && u.password === password);
+                if (user) {
+                    const { password, ...userWithoutPassword } = user;
+                    this.saveCurrentUser(userWithoutPassword);
+                    return { success: true, user: userWithoutPassword };
+                }
+                return { success: false, error: '아이디 또는 비밀번호가 일치하지 않습니다.' };
+            }
+
+            register(username, password, name, phone) {
+                // 중복 사용자명 확인
+                if (this.users.find(u => u.username === username)) {
+                    return { success: false, error: '이미 존재하는 사용자명입니다.' };
+                }
+
+                const newUser = {
+                    id: Date.now(), // 간단한 ID 생성
+                    username,
+                    password,
+                    name,
+                    phone,
+                    role: 'guest'
+                };
+
+                this.users.push(newUser);
+                this.saveUsers();
+                return { success: true, message: '회원가입이 완료되었습니다.' };
+            }
+
+            logout() {
+                this.saveCurrentUser(null);
+            }
+        }
+
+        // 사용자 관리자 인스턴스 생성
+        const userManager = new UserManager();
+
         // 폼 전환 함수
         function showLoginForm() {
             document.getElementById('loginForm').classList.remove('hidden');
@@ -113,37 +204,20 @@
             e.preventDefault();
             
             const formData = new FormData(e.target);
-            const data = {
-                username: formData.get('username'),
-                password: formData.get('password')
-            };
+            const username = formData.get('username');
+            const password = formData.get('password');
             
-            try {
-                const response = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data)
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    // 로그인 성공 시 해당 페이지로 리다이렉트
-                    if (result.redirect === '/admin') {
-                        window.location.href = '/webchat/admin';
-                    } else if (result.redirect === '/chat') {
-                        window.location.href = '/webchat/chat';
-                    } else {
-                        window.location.href = result.redirect;
-                    }
+            const result = userManager.login(username, password);
+            
+            if (result.success) {
+                // 로그인 성공 시 해당 페이지로 리다이렉트
+                if (result.user.role === 'admin') {
+                    window.location.href = 'admin_static.html';
                 } else {
-                    showError('loginError', result.error || '로그인에 실패했습니다.');
+                    window.location.href = 'chat_static.html';
                 }
-            } catch (error) {
-                console.error('로그인 오류:', error);
-                showError('loginError', '서버 연결에 실패했습니다.');
+            } else {
+                showError('loginError', result.error);
             }
         });
         
@@ -152,36 +226,32 @@
             e.preventDefault();
             
             const formData = new FormData(e.target);
-            const data = {
-                username: formData.get('username'),
-                password: formData.get('password'),
-                name: formData.get('name'),
-                phone: formData.get('phone')
-            };
+            const username = formData.get('username');
+            const password = formData.get('password');
+            const name = formData.get('name');
+            const phone = formData.get('phone');
             
-            try {
-                const response = await fetch('/api/register', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data)
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showSuccess('registerSuccess', result.message);
-                    // 2초 후 로그인 폼으로 전환
-                    setTimeout(() => {
-                        showLoginForm();
-                    }, 2000);
+            const result = userManager.register(username, password, name, phone);
+            
+            if (result.success) {
+                showSuccess('registerSuccess', result.message);
+                // 2초 후 로그인 폼으로 전환
+                setTimeout(() => {
+                    showLoginForm();
+                }, 2000);
+            } else {
+                showError('registerError', result.error);
+            }
+        });
+
+        // 페이지 로드 시 이미 로그인된 사용자 확인
+        window.addEventListener('load', () => {
+            if (userManager.currentUser) {
+                if (userManager.currentUser.role === 'admin') {
+                    window.location.href = 'admin_static.html';
                 } else {
-                    showError('registerError', result.error || '회원가입에 실패했습니다.');
+                    window.location.href = 'chat_static.html';
                 }
-            } catch (error) {
-                console.error('회원가입 오류:', error);
-                showError('registerError', '서버 연결에 실패했습니다.');
             }
         });
     </script>
