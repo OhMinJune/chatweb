@@ -63,7 +63,24 @@
                 document.getElementById('chatTitle').textContent = chatroom.name;
                 
                 // Socket.io 연결
-                socket = io();
+                socket = io({
+                    transports: ['websocket', 'polling'],
+                    timeout: 20000,
+                    forceNew: true
+                });
+                
+                // 연결 상태 확인
+                socket.on('connect', () => {
+                    console.log('✅ Socket.io 연결 성공:', socket.id);
+                });
+                
+                socket.on('connected', (data) => {
+                    console.log('✅ 서버 연결 확인:', data.message);
+                });
+                
+                socket.on('connect_error', (error) => {
+                    console.error('❌ Socket.io 연결 오류:', error);
+                });
                 
                 // 채팅방 입장
                 socket.emit('join-room', currentChatroomId);
@@ -77,7 +94,19 @@
                 
                 // Socket 이벤트 리스너
                 socket.on('receive-message', (message) => {
+                    console.log('📨 메시지 수신:', message);
                     displayMessage(message);
+                });
+                
+                // 에러 처리
+                socket.on('error', (error) => {
+                    console.error('❌ Socket 오류:', error);
+                    alert('오류가 발생했습니다: ' + error.message);
+                });
+                
+                // 채팅방 입장 확인
+                socket.on('room-joined', (data) => {
+                    console.log('✅ 채팅방 입장 확인:', data);
                 });
                 
                 // 메시지 로드
@@ -124,19 +153,29 @@
             const messageInput = document.getElementById('messageInput');
             const message = messageInput.value.trim();
             
-            if (!message || !currentChatroomId) return;
+            if (!message || !currentChatroomId) {
+                console.log('❌ 메시지 또는 채팅방 ID가 없습니다.');
+                return;
+            }
             
             try {
+                console.log('📤 메시지 전송 시도:', {
+                    chatroomId: currentChatroomId,
+                    message: message,
+                    senderId: currentUser.id
+                });
+                
                 socket.emit('send-message', {
                     chatroomId: currentChatroomId,
                     message: message,
-                    senderId: 2 // 게스트 ID (실제로는 세션에서 가져와야 함)
+                    senderId: currentUser.id
                 });
                 
                 messageInput.value = '';
                 
             } catch (error) {
-                console.error('메시지 전송 오류:', error);
+                console.error('❌ 메시지 전송 오류:', error);
+                alert('메시지 전송에 실패했습니다.');
             }
         }
         

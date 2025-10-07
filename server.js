@@ -13,8 +13,11 @@ const server = http.createServer(app);
 const io = socketIo(server, {
     cors: {
         origin: "*",
-        methods: ["GET", "POST"]
-    }
+        methods: ["GET", "POST"],
+        credentials: true,
+        transports: ['websocket', 'polling']
+    },
+    allowEIO3: true
 });
 
 // 미들웨어 설정
@@ -294,18 +297,27 @@ app.get('/chat', requireAuth, (req, res) => {
 
 // Socket.io 연결 처리
 io.on('connection', (socket) => {
-    console.log('사용자 연결:', socket.id);
+    console.log('✅ 사용자 연결:', socket.id);
+    
+    // 연결 확인 이벤트
+    socket.emit('connected', { message: '서버에 연결되었습니다.' });
     
     // 채팅방 입장
     socket.on('join-room', (chatroomId) => {
         socket.join(chatroomId);
-        console.log(`사용자 ${socket.id}가 채팅방 ${chatroomId}에 입장했습니다.`);
+        console.log(`✅ 사용자 ${socket.id}가 채팅방 ${chatroomId}에 입장했습니다.`);
+        socket.emit('room-joined', { chatroomId, message: '채팅방에 입장했습니다.' });
     });
     
     // 메시지 전송
     socket.on('send-message', async (data) => {
         try {
+            console.log('📨 메시지 전송 요청:', data);
             const { chatroomId, message, senderId } = data;
+            
+            if (!chatroomId || !message || !senderId) {
+                throw new Error('필수 데이터가 누락되었습니다.');
+            }
             
             // 메시지 저장
             const result = await db.query(
@@ -322,21 +334,29 @@ io.on('connection', (socket) => {
             `, [result.rows[0].id]);
             const rows = messageResult.rows;
             
+            if (rows.length === 0) {
+                throw new Error('메시지 조회에 실패했습니다.');
+            }
+            
             // 채팅방 업데이트 시간 갱신
             await db.query(
                 'UPDATE chatrooms SET updated_at = CURRENT_TIMESTAMP WHERE id = $1',
                 [chatroomId]
             );
             
+            console.log('✅ 메시지 저장 완료:', rows[0]);
+            
             // 채팅방의 모든 사용자에게 메시지 전송
             io.to(chatroomId).emit('receive-message', rows[0]);
+            console.log(`📤 채팅방 ${chatroomId}에 메시지 전송 완료`);
             
             // 관리자에게 채팅방 목록 업데이트 알림
             io.emit('chatroom-updated', { chatroomId });
+            console.log('🔄 관리자에게 채팅방 업데이트 알림 전송');
             
         } catch (error) {
-            console.error('메시지 전송 오류:', error);
-            socket.emit('error', { message: '메시지 전송에 실패했습니다.' });
+            console.error('❌ 메시지 전송 오류:', error);
+            socket.emit('error', { message: '메시지 전송에 실패했습니다: ' + error.message });
         }
     });
     
