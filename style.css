@@ -1,0 +1,381 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.container {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    width: 100%;
+    max-width: 1200px;
+    height: 80vh;
+    display: flex;
+}
+
+/* 로그인/회원가입 페이지 */
+.auth-container {
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
+    padding: 40px;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+.auth-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.auth-header h1 {
+    color: #333;
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+}
+
+.auth-header p {
+    color: #666;
+    font-size: 1.1rem;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #333;
+    font-weight: 600;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 15px;
+    border: 2px solid #e1e5e9;
+    border-radius: 10px;
+    font-size: 16px;
+    transition: border-color 0.3s ease;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.btn {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background: #6c757d;
+    margin-top: 10px;
+}
+
+.auth-links {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.auth-links a {
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.auth-links a:hover {
+    text-decoration: underline;
+}
+
+/* 어드민 페이지 */
+.admin-container {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+.sidebar {
+    width: 300px;
+    background: #f8f9fa;
+    border-right: 1px solid #e9ecef;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-header {
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.sidebar-header h2 {
+    font-size: 1.5rem;
+    margin-bottom: 5px;
+}
+
+.sidebar-header p {
+    opacity: 0.9;
+    font-size: 0.9rem;
+}
+
+.chatroom-list {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.chatroom-item {
+    padding: 15px 20px;
+    border-bottom: 1px solid #e9ecef;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.chatroom-item:hover {
+    background-color: #e9ecef;
+}
+
+.chatroom-item.active {
+    background-color: #667eea;
+    color: white;
+}
+
+.chatroom-name {
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.chatroom-guest {
+    font-size: 0.9rem;
+    opacity: 0.7;
+}
+
+.chatroom-time {
+    font-size: 0.8rem;
+    opacity: 0.6;
+    margin-top: 5px;
+}
+
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-header {
+    padding: 20px;
+    background: white;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.chat-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.logout-btn {
+    padding: 8px 16px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.chat-messages {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    background: #f8f9fa;
+}
+
+.message {
+    margin-bottom: 15px;
+    display: flex;
+    align-items: flex-start;
+}
+
+.message.own {
+    flex-direction: row-reverse;
+}
+
+.message-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    margin: 0 10px;
+}
+
+.message-content {
+    max-width: 70%;
+    background: white;
+    padding: 12px 16px;
+    border-radius: 18px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.message.own .message-content {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.message-sender {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 5px;
+    opacity: 0.7;
+}
+
+.message-text {
+    line-height: 1.4;
+}
+
+.message-time {
+    font-size: 0.7rem;
+    opacity: 0.6;
+    margin-top: 5px;
+}
+
+.chat-input {
+    padding: 20px;
+    background: white;
+    border-top: 1px solid #e9ecef;
+    display: flex;
+    gap: 10px;
+}
+
+.chat-input input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid #e9ecef;
+    border-radius: 25px;
+    font-size: 16px;
+    outline: none;
+}
+
+.chat-input input:focus {
+    border-color: #667eea;
+}
+
+.send-btn {
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.send-btn:hover {
+    transform: translateY(-1px);
+}
+
+/* 게스트 채팅 페이지 */
+.guest-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+}
+
+.guest-header {
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.guest-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+}
+
+/* 유틸리티 클래스 */
+.hidden {
+    display: none !important;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.mt-20 {
+    margin-top: 20px;
+}
+
+.error-message {
+    color: #dc3545;
+    font-size: 0.9rem;
+    margin-top: 5px;
+}
+
+.success-message {
+    color: #28a745;
+    font-size: 0.9rem;
+    margin-top: 5px;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .container {
+        height: 100vh;
+        border-radius: 0;
+    }
+    
+    .admin-container {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+        height: 200px;
+    }
+    
+    .auth-container {
+        margin: 20px;
+        padding: 30px 20px;
+    }
+    
+    .auth-header h1 {
+        font-size: 2rem;
+    }
+}

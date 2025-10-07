@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>관리자 채팅 - 실시간 채팅 웹사이트</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="admin-container">
+            <!-- 사이드바 -->
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    <h2>관리자 패널</h2>
+                    <p id="adminName">관리자님, 안녕하세요!</p>
+                </div>
+                
+                <div class="chatroom-list" id="chatroomList">
+                    <!-- 채팅방 목록이 여기에 동적으로 추가됩니다 -->
+                </div>
+            </div>
+            
+            <!-- 메인 콘텐츠 -->
+            <div class="main-content">
+                <div class="chat-header">
+                    <div class="chat-title" id="chatTitle">채팅방을 선택해주세요</div>
+                    <button class="logout-btn" onclick="logout()">로그아웃</button>
+                </div>
+                
+                <div class="chat-messages" id="chatMessages">
+                    <div class="text-center mt-20">
+                        <p>채팅방을 선택하여 대화를 시작하세요.</p>
+                    </div>
+                </div>
+                
+                <div class="chat-input">
+                    <input type="text" id="messageInput" placeholder="메시지를 입력하세요..." disabled>
+                    <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>전송</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 로컬 스토리지에서 데이터 관리
+        class ChatManager {
+            constructor() {
+                this.currentUser = this.loadCurrentUser();
+                this.chatrooms = this.loadChatrooms();
+                this.messages = this.loadMessages();
+                this.currentChatroomId = null;
+            }
+
+            loadCurrentUser() {
+                const user = localStorage.getItem('chatweb_current_user');
+                return user ? JSON.parse(user) : null;
+            }
+
+            loadChatrooms() {
+                const chatrooms = localStorage.getItem('chatweb_chatrooms');
+                if (!chatrooms) {
+                    // 기본 채팅방 데이터 생성
+                    const defaultChatrooms = [
+                        {
+                            id: 1,
+                            name: '고객상담 1',
+                            admin_id: 1,
+                            guest_id: 2,
+                            status: 'active',
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString(),
+                            guest_name: '게스트1'
+                        },
+                        {
+                            id: 2,
+                            name: '고객상담 2',
+                            admin_id: 1,
+                            guest_id: 3,
+                            status: 'active',
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString(),
+                            guest_name: '게스트2'
+                        }
+                    ];
+                    localStorage.setItem('chatweb_chatrooms', JSON.stringify(defaultChatrooms));
+                    return defaultChatrooms;
+                }
+                return JSON.parse(chatrooms);
+            }
+
+            loadMessages() {
+                const messages = localStorage.getItem('chatweb_messages');
+                if (!messages) {
+                    // 기본 메시지 데이터 생성
+                    const defaultMessages = [
+                        {
+                            id: 1,
+                            chatroom_id: 1,
+                            sender_id: 2,
+                            message: '안녕하세요! 문의사항이 있어서 연락드렸습니다.',
+                            sender_name: '게스트1',
+                            sender_role: 'guest',
+                            created_at: new Date(Date.now() - 60000).toISOString()
+                        },
+                        {
+                            id: 2,
+                            chatroom_id: 1,
+                            sender_id: 1,
+                            message: '안녕하세요! 어떤 도움이 필요하신가요?',
+                            sender_name: '관리자',
+                            sender_role: 'admin',
+                            created_at: new Date(Date.now() - 30000).toISOString()
+                        },
+                        {
+                            id: 3,
+                            chatroom_id: 2,
+                            sender_id: 3,
+                            message: '제품에 대해 문의드리고 싶습니다.',
+                            sender_name: '게스트2',
+                            sender_role: 'guest',
+                            created_at: new Date(Date.now() - 120000).toISOString()
+                        },
+                        {
+                            id: 4,
+                            chatroom_id: 2,
+                            sender_id: 1,
+                            message: '네, 어떤 제품에 대해 궁금하신가요?',
+                            sender_name: '관리자',
+                            sender_role: 'admin',
+                            created_at: new Date(Date.now() - 90000).toISOString()
+                        }
+                    ];
+                    localStorage.setItem('chatweb_messages', JSON.stringify(defaultMessages));
+                    return defaultMessages;
+                }
+                return JSON.parse(messages);
+            }
+
+            saveMessages() {
+                localStorage.setItem('chatweb_messages', JSON.stringify(this.messages));
+            }
+
+            getChatroomsForAdmin(adminId) {
+                return this.chatrooms.filter(room => room.admin_id === adminId);
+            }
+
+            getMessagesForChatroom(chatroomId) {
+                return this.messages.filter(msg => msg.chatroom_id === chatroomId);
+            }
+
+            addMessage(chatroomId, senderId, message) {
+                const users = JSON.parse(localStorage.getItem('chatweb_users') || '[]');
+                const sender = users.find(u => u.id === senderId);
+                
+                const newMessage = {
+                    id: Date.now(),
+                    chatroom_id: chatroomId,
+                    sender_id: senderId,
+                    message: message,
+                    sender_name: sender ? sender.name : '알 수 없음',
+                    sender_role: sender ? sender.role : 'guest',
+                    created_at: new Date().toISOString()
+                };
+
+                this.messages.push(newMessage);
+                this.saveMessages();
+                return newMessage;
+            }
+
+            updateChatroomTime(chatroomId) {
+                const chatroom = this.chatrooms.find(room => room.id === chatroomId);
+                if (chatroom) {
+                    chatroom.updated_at = new Date().toISOString();
+                    localStorage.setItem('chatweb_chatrooms', JSON.stringify(this.chatrooms));
+                }
+            }
+        }
+
+        // 채팅 관리자 인스턴스 생성
+        const chatManager = new ChatManager();
+        
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeAdmin();
+        });
+        
+        // 관리자 초기화
+        function initializeAdmin() {
+            // 로그인 확인
+            if (!chatManager.currentUser || chatManager.currentUser.role !== 'admin') {
+                window.location.href = 'index_static.html';
+                return;
+            }
+
+            // 관리자 이름 표시
+            document.getElementById('adminName').textContent = `${chatManager.currentUser.name}님, 안녕하세요!`;
+            
+            // 채팅방 목록 로드
+            loadChatrooms();
+            
+            // 메시지 입력 이벤트
+            document.getElementById('messageInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+        }
+        
+        // 채팅방 목록 로드
+        function loadChatrooms() {
+            const adminChatrooms = chatManager.getChatroomsForAdmin(chatManager.currentUser.id);
+            const chatroomList = document.getElementById('chatroomList');
+            chatroomList.innerHTML = '';
+            
+            if (adminChatrooms.length === 0) {
+                chatroomList.innerHTML = '<div class="text-center mt-20"><p>채팅방이 없습니다.</p></div>';
+                return;
+            }
+            
+            adminChatrooms.forEach(chatroom => {
+                const chatroomItem = document.createElement('div');
+                chatroomItem.className = 'chatroom-item';
+                chatroomItem.onclick = () => selectChatroom(chatroom.id);
+                
+                const guestName = chatroom.guest_name || '게스트';
+                const lastUpdate = new Date(chatroom.updated_at).toLocaleString('ko-KR');
+                
+                chatroomItem.innerHTML = `
+                    <div class="chatroom-name">${chatroom.name}</div>
+                    <div class="chatroom-guest">${guestName}</div>
+                    <div class="chatroom-time">${lastUpdate}</div>
+                `;
+                
+                chatroomList.appendChild(chatroomItem);
+            });
+        }
+        
+        // 채팅방 선택
+        function selectChatroom(chatroomId) {
+            currentChatroomId = chatroomId;
+            
+            // UI 업데이트
+            document.querySelectorAll('.chatroom-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.closest('.chatroom-item').classList.add('active');
+            
+            // 채팅방 제목 업데이트
+            const chatroomItem = event.target.closest('.chatroom-item');
+            const chatroomName = chatroomItem.querySelector('.chatroom-name').textContent;
+            document.getElementById('chatTitle').textContent = chatroomName;
+            
+            // 메시지 입력 활성화
+            document.getElementById('messageInput').disabled = false;
+            document.getElementById('sendBtn').disabled = false;
+            
+            // 메시지 로드
+            loadMessages(chatroomId);
+        }
+        
+        // 메시지 로드
+        function loadMessages(chatroomId) {
+            const messages = chatManager.getMessagesForChatroom(chatroomId);
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.innerHTML = '';
+            
+            messages.forEach(message => {
+                displayMessage(message);
+            });
+            
+            // 스크롤을 맨 아래로
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // 메시지 전송
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+            
+            if (!message || !currentChatroomId) return;
+            
+            // 메시지 추가
+            const newMessage = chatManager.addMessage(currentChatroomId, chatManager.currentUser.id, message);
+            
+            // UI에 표시
+            displayMessage(newMessage);
+            
+            // 채팅방 업데이트 시간 갱신
+            chatManager.updateChatroomTime(currentChatroomId);
+            
+            // 입력 필드 초기화
+            messageInput.value = '';
+        }
+        
+        // 메시지 표시
+        function displayMessage(message) {
+            const chatMessages = document.getElementById('chatMessages');
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            
+            // 메시지가 현재 사용자(관리자)의 것인지 확인
+            const isOwn = message.sender_role === 'admin';
+            if (isOwn) {
+                messageDiv.classList.add('own');
+            }
+            
+            const time = new Date(message.created_at).toLocaleTimeString('ko-KR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            messageDiv.innerHTML = `
+                <div class="message-avatar">
+                    ${message.sender_name.charAt(0)}
+                </div>
+                <div class="message-content">
+                    <div class="message-sender">${message.sender_name}</div>
+                    <div class="message-text">${message.message}</div>
+                    <div class="message-time">${time}</div>
+                </div>
+            `;
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // 로그아웃
+        function logout() {
+            localStorage.removeItem('chatweb_current_user');
+            window.location.href = 'index_static.html';
+        }
+    </script>
+</body>
+</html>
