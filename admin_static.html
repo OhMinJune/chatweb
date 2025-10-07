@@ -142,7 +142,10 @@
             }
 
             getChatroomsForAdmin(adminId) {
-                return this.chatrooms.filter(room => room.admin_id === adminId);
+                // 채팅방 목록을 업데이트 시간 순으로 정렬
+                return this.chatrooms
+                    .filter(room => room.admin_id === adminId)
+                    .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
             }
 
             getMessagesForChatroom(chatroomId) {

@@ -130,7 +130,32 @@
             }
 
             getChatroomForGuest(guestId) {
-                return this.chatrooms.find(room => room.guest_id === guestId);
+                let chatroom = this.chatrooms.find(room => room.guest_id === guestId);
+                
+                // 채팅방이 없으면 새로 생성
+                if (!chatroom) {
+                    chatroom = this.createChatroomForGuest(guestId);
+                }
+                
+                return chatroom;
+            }
+
+            createChatroomForGuest(guestId) {
+                const newChatroom = {
+                    id: Date.now(),
+                    name: `고객상담 ${this.chatrooms.length + 1}`,
+                    admin_id: 1, // 관리자 ID
+                    guest_id: guestId,
+                    status: 'active',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    admin_name: '관리자'
+                };
+
+                this.chatrooms.push(newChatroom);
+                localStorage.setItem('chatweb_chatrooms', JSON.stringify(this.chatrooms));
+                
+                return newChatroom;
             }
 
             getMessagesForChatroom(chatroomId) {
