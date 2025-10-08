@@ -54,15 +54,22 @@ let db;
 // 데이터베이스 연결
 async function connectDB() {
     try {
+        console.log('데이터베이스 연결 시도 중...');
+        console.log('DATABASE_URL:', process.env.DATABASE_URL ? '설정됨' : '설정되지 않음');
+        
         if (process.env.DATABASE_URL) {
+            console.log('Supabase 연결 문자열 사용');
             db = new mysql.Client(process.env.DATABASE_URL);
         } else {
+            console.log('로컬 설정 사용');
             db = new mysql.Client(dbConfig);
         }
+        
         await db.connect();
-        console.log('데이터베이스 연결 성공');
+        console.log('✅ 데이터베이스 연결 성공');
     } catch (error) {
-        console.error('데이터베이스 연결 실패:', error);
+        console.error('❌ 데이터베이스 연결 실패:', error);
+        console.error('연결 문자열:', process.env.DATABASE_URL ? '설정됨' : '설정되지 않음');
         // 연결 실패해도 서버는 계속 실행
     }
 }
