@@ -369,20 +369,20 @@ io.on('connection', (socket) => {
 // 서버 시작
 const PORT = process.env.PORT || 3000;
 
-// Vercel에서는 server.listen을 하지 않음
-if (process.env.NODE_ENV !== 'production' || process.env.VERCEL !== '1') {
-    server.listen(PORT, '0.0.0.0', async () => {
-        console.log(`서버가 포트 ${PORT}에서 실행 중입니다.`);
-        // 데이터베이스 연결을 백그라운드에서 처리
-        setTimeout(async () => {
-            await connectDB();
-        }, 1000);
-    });
-} else {
+// Vercel 환경 확인
+if (process.env.VERCEL) {
     // Vercel 환경에서는 데이터베이스 연결만 수행
     setTimeout(async () => {
         await connectDB();
     }, 1000);
+} else {
+    // 로컬 환경에서는 서버 시작
+    server.listen(PORT, '0.0.0.0', async () => {
+        console.log(`서버가 포트 ${PORT}에서 실행 중입니다.`);
+        setTimeout(async () => {
+            await connectDB();
+        }, 1000);
+    });
 }
 
 // Vercel을 위한 export
