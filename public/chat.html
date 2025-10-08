@@ -109,6 +109,13 @@
                     console.log('✅ 채팅방 입장 확인:', data);
                 });
                 
+                // 환영 메시지
+                socket.on('connected', (data) => {
+                    console.log('✅ 서버 연결 확인:', data.message);
+                    // 환영 메시지 표시
+                    displayWelcomeMessage();
+                });
+                
                 // 메시지 로드
                 await loadMessages(currentChatroomId);
                 
@@ -217,11 +224,36 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
         
+        // 환영 메시지 표시
+        function displayWelcomeMessage() {
+            const chatMessages = document.getElementById('chatMessages');
+            
+            // 기존 안내 메시지 제거
+            if (chatMessages.children.length === 1 && chatMessages.children[0].classList.contains('text-center')) {
+                chatMessages.innerHTML = '';
+            }
+            
+            // 환영 메시지 추가
+            const welcomeDiv = document.createElement('div');
+            welcomeDiv.className = 'message welcome-message';
+            welcomeDiv.innerHTML = `
+                <div class="message-avatar">👋</div>
+                <div class="message-content">
+                    <div class="message-sender">시스템</div>
+                    <div class="message-text">안녕하세요! 채팅방에 오신 것을 환영합니다. 관리자가 곧 응답해드릴 것입니다.</div>
+                    <div class="message-time">${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</div>
+                </div>
+            `;
+            
+            chatMessages.appendChild(welcomeDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
         // 로그아웃
         async function logout() {
             try {
                 await fetch('/api/logout', { method: 'POST' });
-                window.location.href = '/webchat/';
+                window.location.href = '/';
             } catch (error) {
                 console.error('로그아웃 오류:', error);
             }

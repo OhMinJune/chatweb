@@ -115,6 +115,14 @@
                     console.log('✅ 채팅방 입장 확인:', data);
                 });
                 
+                // 새 채팅방 생성 알림
+                socket.on('new-chatroom-created', (data) => {
+                    console.log('🎉 새 채팅방 생성 알림:', data);
+                    alert(`새 고객이 가입했습니다!\n${data.guestName}님의 채팅방이 생성되었습니다.`);
+                    // 채팅방 목록 새로고침
+                    loadChatrooms();
+                });
+                
             } catch (error) {
                 console.error('초기화 오류:', error);
                 alert('페이지 로드 중 오류가 발생했습니다.');

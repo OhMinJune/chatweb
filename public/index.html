@@ -204,20 +204,37 @@
             e.preventDefault();
             
             const formData = new FormData(e.target);
-            const username = formData.get('username');
-            const password = formData.get('password');
+            const data = {
+                username: formData.get('username'),
+                password: formData.get('password')
+            };
             
-            const result = userManager.login(username, password);
-            
-            if (result.success) {
-                // 로그인 성공 시 해당 페이지로 리다이렉트
-                if (result.user.role === 'admin') {
-                    window.location.href = 'admin_static.html';
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // 로그인 성공 시 해당 페이지로 리다이렉트
+                    if (result.redirect === '/admin') {
+                        window.location.href = '/admin';
+                    } else if (result.redirect === '/chat') {
+                        window.location.href = '/chat';
+                    } else {
+                        window.location.href = result.redirect;
+                    }
                 } else {
-                    window.location.href = 'chat_static.html';
+                    showError('loginError', result.error || '로그인에 실패했습니다.');
                 }
-            } else {
-                showError('loginError', result.error);
+            } catch (error) {
+                console.error('로그인 오류:', error);
+                showError('loginError', '서버 연결에 실패했습니다.');
             }
         });
         
@@ -226,21 +243,61 @@
             e.preventDefault();
             
             const formData = new FormData(e.target);
-            const username = formData.get('username');
-            const password = formData.get('password');
-            const name = formData.get('name');
-            const phone = formData.get('phone');
+            const data = {
+                username: formData.get('username'),
+                password: formData.get('password'),
+                name: formData.get('name'),
+                phone: formData.get('phone')
+            };
             
-            const result = userManager.register(username, password, name, phone);
-            
-            if (result.success) {
-                showSuccess('registerSuccess', result.message);
-                // 2초 후 로그인 폼으로 전환
-                setTimeout(() => {
-                    showLoginForm();
-                }, 2000);
-            } else {
-                showError('registerError', result.error);
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showSuccess('registerSuccess', result.message);
+                    
+                    // 자동 로그인 처리
+                    if (result.autoLogin) {
+                        // 회원가입한 사용자로 자동 로그인
+                        const loginResponse = await fetch('/api/login', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                username: data.username,
+                                password: data.password
+                            })
+                        });
+                        
+                        const loginResult = await loginResponse.json();
+                        
+                        if (loginResult.success) {
+                            // 채팅 페이지로 즉시 이동
+                            setTimeout(() => {
+                                window.location.href = '/chat';
+                            }, 1000);
+                        }
+                    } else {
+                        // 2초 후 로그인 폼으로 전환
+                        setTimeout(() => {
+                            showLoginForm();
+                        }, 2000);
+                    }
+                } else {
+                    showError('registerError', result.error);
+                }
+            } catch (error) {
+                console.error('회원가입 오류:', error);
+                showError('registerError', '서버 연결에 실패했습니다.');
             }
         });
 

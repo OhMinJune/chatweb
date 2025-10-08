@@ -152,7 +152,40 @@ app.post('/api/register', async (req, res) => {
             [username, hashedPassword, name, phone, 'guest']
         );
         
-        res.json({ success: true, message: '회원가입이 완료되었습니다.' });
+        const newUserId = result.rows[0].id;
+        
+        // 관리자 ID 찾기 (첫 번째 관리자)
+        const adminResult = await db.query(
+            'SELECT id FROM users WHERE role = $1 LIMIT 1',
+            ['admin']
+        );
+        
+        if (adminResult.rows.length > 0) {
+            const adminId = adminResult.rows[0].id;
+            
+            // 새 채팅방 생성
+            const chatroomResult = await db.query(`
+                INSERT INTO chatrooms (name, admin_id, guest_id) 
+                VALUES ($1, $2, $3) 
+                RETURNING *
+            `, [`고객상담 ${name}`, adminId, newUserId]);
+            
+            console.log('✅ 새 채팅방 생성:', chatroomResult.rows[0]);
+            
+            // 관리자에게 새 채팅방 알림
+            io.emit('new-chatroom-created', {
+                chatroom: chatroomResult.rows[0],
+                guestName: name,
+                message: `${name}님이 새로 가입하여 채팅방이 생성되었습니다.`
+            });
+        }
+        
+        res.json({ 
+            success: true, 
+            message: '회원가입이 완료되었습니다.',
+            autoLogin: true,
+            redirect: '/chat'
+        });
         
     } catch (error) {
         console.error('회원가입 오류:', error);
