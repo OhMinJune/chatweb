@@ -86,22 +86,38 @@ let db;
 // 데이터베이스 연결
 async function connectDB() {
     try {
-        console.log('데이터베이스 연결 시도 중...');
+        console.log('🔗 데이터베이스 연결 시도 중...');
         console.log('DATABASE_URL:', process.env.DATABASE_URL ? '설정됨' : '설정되지 않음');
         
-        if (process.env.DATABASE_URL) {
-            console.log('Supabase 연결 문자열 사용');
-            db = new mysql.Client(process.env.DATABASE_URL);
-        } else {
-            console.log('로컬 설정 사용');
-            db = new mysql.Client(dbConfig);
-        }
+        // 타임아웃 설정 (10초)
+        const connectPromise = new Promise(async (resolve, reject) => {
+            try {
+                if (process.env.DATABASE_URL) {
+                    console.log('📡 Supabase 연결 문자열 사용');
+                    db = new mysql.Client(process.env.DATABASE_URL);
+                } else {
+                    console.log('🏠 로컬 설정 사용');
+                    db = new mysql.Client(dbConfig);
+                }
+                
+                await db.connect();
+                console.log('✅ 데이터베이스 연결 성공');
+                resolve();
+            } catch (error) {
+                reject(error);
+            }
+        });
         
-        await db.connect();
-        console.log('✅ 데이터베이스 연결 성공');
+        // 10초 타임아웃
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('데이터베이스 연결 타임아웃 (10초)')), 10000);
+        });
+        
+        await Promise.race([connectPromise, timeoutPromise]);
+        
     } catch (error) {
-        console.error('❌ 데이터베이스 연결 실패:', error);
-        console.error('연결 문자열:', process.env.DATABASE_URL ? '설정됨' : '설정되지 않음');
+        console.error('❌ 데이터베이스 연결 실패:', error.message);
+        console.log('⚠️ 데이터베이스 없이 서버 계속 실행');
         // 연결 실패해도 서버는 계속 실행
     }
 }
@@ -520,22 +536,16 @@ io.on('connection', (socket) => {
 // 서버 시작
 const PORT = process.env.PORT || 3000;
 
-// CloudType 환경 확인
-if (process.env.CLOUDTYPE) {
-    console.log('CloudType 환경에서 실행 중...');
-    // CloudType 환경에서는 데이터베이스 연결만 수행 (비동기)
+// 서버 시작 (모든 환경에서 동일하게 처리)
+server.listen(PORT, '0.0.0.0', async () => {
+    console.log(`🚀 서버가 포트 ${PORT}에서 실행 중입니다.`);
+    console.log(`🌍 환경: ${process.env.NODE_ENV || 'development'}`);
+    
+    // 데이터베이스 연결 (비동기, 서버 시작과 독립적)
     connectDB().catch(error => {
-        console.error('CloudType 데이터베이스 연결 실패, 서버는 계속 실행:', error);
+        console.error('❌ 데이터베이스 연결 실패, 서버는 계속 실행:', error);
     });
-} else {
-    // 로컬 환경에서는 서버 시작
-    server.listen(PORT, '0.0.0.0', async () => {
-        console.log(`로컬 서버가 포트 ${PORT}에서 실행 중입니다.`);
-        connectDB().catch(error => {
-            console.error('로컬 데이터베이스 연결 실패, 서버는 계속 실행:', error);
-        });
-    });
-}
+});
 
 // Vercel을 위한 export
 module.exports = app;
