@@ -33,8 +33,29 @@ app.use(session({
     cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 } // 24시간
 }));
 
-// /webchat/ 경로에서 정적 파일 서빙
-app.use('/webchat', express.static('public'));
+// 정적 파일 서빙 설정
+const publicPath = path.join(__dirname, 'public');
+
+// 루트 경로에서 정적 파일 서빙
+app.use(express.static(publicPath));
+
+// /webchat/ 경로에서도 정적 파일 서빙
+app.use('/webchat', express.static(publicPath));
+
+// CloudType 환경 대응을 위한 추가 정적 파일 서빙
+app.use('/static', express.static(publicPath));
+
+// CSS 파일 직접 서빙 (CloudType 환경 대응)
+app.get('/style.css', (req, res) => {
+    res.setHeader('Content-Type', 'text/css');
+    res.sendFile(path.join(publicPath, 'style.css'));
+});
+
+// Socket.io 클라이언트 파일 직접 서빙
+app.get('/socket.io/socket.io.js', (req, res) => {
+    res.setHeader('Content-Type', 'application/javascript');
+    res.sendFile(path.join(__dirname, 'node_modules', 'socket.io', 'client-dist', 'socket.io.js'));
+});
 
 // 데이터베이스 연결 설정
 const dbConfig = process.env.DATABASE_URL || {
