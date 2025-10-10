@@ -70,7 +70,11 @@
                 socket = io({
                     transports: ['websocket', 'polling'],
                     timeout: 20000,
-                    forceNew: true
+                    forceNew: true,
+                    reconnection: true,
+                    reconnectionDelay: 1000,
+                    reconnectionAttempts: 5,
+                    maxReconnectionAttempts: 5
                 });
                 
                 // 연결 상태 확인

@@ -71,20 +71,49 @@
                 socket = io({
                     transports: ['websocket', 'polling'],
                     timeout: 20000,
-                    forceNew: true
+                    forceNew: true,
+                    reconnection: true,
+                    reconnectionDelay: 1000,
+                    reconnectionAttempts: 5,
+                    maxReconnectionAttempts: 5
                 });
                 
                 // 연결 상태 확인
                 socket.on('connect', () => {
                     console.log('✅ Socket.io 연결 성공:', socket.id);
+                    // 연결 성공 시 채팅방 입장
+                    if (currentChatroomId) {
+                        socket.emit('join-room', currentChatroomId);
+                    }
                 });
                 
                 socket.on('connected', (data) => {
                     console.log('✅ 서버 연결 확인:', data.message);
+                    console.log('📊 연결 정보:', data);
                 });
                 
                 socket.on('connect_error', (error) => {
                     console.error('❌ Socket.io 연결 오류:', error);
+                    alert('서버 연결에 실패했습니다. 페이지를 새로고침해주세요.');
+                });
+                
+                socket.on('disconnect', (reason) => {
+                    console.log('❌ Socket.io 연결 해제:', reason);
+                    if (reason === 'io server disconnect') {
+                        alert('서버에서 연결이 끊어졌습니다. 페이지를 새로고침해주세요.');
+                    }
+                });
+                
+                socket.on('reconnect', (attemptNumber) => {
+                    console.log('🔄 Socket.io 재연결 성공:', attemptNumber);
+                    // 재연결 시 채팅방 입장
+                    if (currentChatroomId) {
+                        socket.emit('join-room', currentChatroomId);
+                    }
+                });
+                
+                socket.on('reconnect_error', (error) => {
+                    console.error('❌ Socket.io 재연결 오류:', error);
                 });
                 
                 // 채팅방 입장
@@ -165,8 +194,26 @@
             const messageInput = document.getElementById('messageInput');
             const message = messageInput.value.trim();
             
-            if (!message || !currentChatroomId) {
-                console.log('❌ 메시지 또는 채팅방 ID가 없습니다.');
+            if (!message) {
+                console.log('❌ 메시지가 비어있습니다.');
+                return;
+            }
+            
+            if (!currentChatroomId) {
+                console.log('❌ 채팅방 ID가 없습니다.');
+                alert('채팅방 정보를 불러오는 중입니다. 잠시만 기다려주세요.');
+                return;
+            }
+            
+            if (!currentUser || !currentUser.id) {
+                console.log('❌ 사용자 정보가 없습니다.');
+                alert('사용자 정보를 불러오는 중입니다. 잠시만 기다려주세요.');
+                return;
+            }
+            
+            if (!socket || !socket.connected) {
+                console.log('❌ Socket.io 연결이 없습니다.');
+                alert('서버 연결이 끊어졌습니다. 페이지를 새로고침해주세요.');
                 return;
             }
             
@@ -174,20 +221,27 @@
                 console.log('📤 메시지 전송 시도:', {
                     chatroomId: currentChatroomId,
                     message: message,
-                    senderId: currentUser.id
+                    senderId: currentUser.id,
+                    socketId: socket.id
                 });
                 
+                // 메시지 입력 필드 비우기
+                messageInput.value = '';
+                
+                // Socket.io로 메시지 전송
                 socket.emit('send-message', {
                     chatroomId: currentChatroomId,
                     message: message,
                     senderId: currentUser.id
                 });
                 
-                messageInput.value = '';
+                console.log('✅ 메시지 전송 요청 완료');
                 
             } catch (error) {
                 console.error('❌ 메시지 전송 오류:', error);
-                alert('메시지 전송에 실패했습니다.');
+                alert('메시지 전송에 실패했습니다: ' + error.message);
+                // 오류 발생 시 입력 필드 복원
+                messageInput.value = message;
             }
         }
         

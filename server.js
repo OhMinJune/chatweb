@@ -17,7 +17,9 @@ const io = socketIo(server, {
         credentials: true,
         transports: ['websocket', 'polling']
     },
-    allowEIO3: true
+    allowEIO3: true,
+    pingTimeout: 60000,
+    pingInterval: 25000
 });
 
 // 미들웨어 설정
@@ -408,13 +410,28 @@ io.on('connection', (socket) => {
     console.log('✅ 사용자 연결:', socket.id);
     
     // 연결 확인 이벤트
-    socket.emit('connected', { message: '서버에 연결되었습니다.' });
+    socket.emit('connected', { 
+        message: '서버에 연결되었습니다.',
+        socketId: socket.id,
+        timestamp: new Date().toISOString()
+    });
     
     // 채팅방 입장
     socket.on('join-room', (chatroomId) => {
-        socket.join(chatroomId);
-        console.log(`✅ 사용자 ${socket.id}가 채팅방 ${chatroomId}에 입장했습니다.`);
-        socket.emit('room-joined', { chatroomId, message: '채팅방에 입장했습니다.' });
+        try {
+            console.log(`📥 채팅방 입장 요청: ${socket.id} -> ${chatroomId}`);
+            socket.join(chatroomId);
+            console.log(`✅ 사용자 ${socket.id}가 채팅방 ${chatroomId}에 입장했습니다.`);
+            socket.emit('room-joined', { 
+                chatroomId, 
+                message: '채팅방에 입장했습니다.',
+                socketId: socket.id,
+                timestamp: new Date().toISOString()
+            });
+        } catch (error) {
+            console.error('❌ 채팅방 입장 오류:', error);
+            socket.emit('error', { message: '채팅방 입장에 실패했습니다.' });
+        }
     });
     
     // 메시지 전송
