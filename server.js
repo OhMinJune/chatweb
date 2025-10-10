@@ -33,28 +33,37 @@ app.use(session({
     cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 } // 24시간
 }));
 
-// 정적 파일 서빙 설정
+// 정적 파일 서빙 설정 (CloudType 환경 최적화)
 const publicPath = path.join(__dirname, 'public');
 
-// 루트 경로에서 정적 파일 서빙
+// 기본 정적 파일 서빙
 app.use(express.static(publicPath));
 
 // /webchat/ 경로에서도 정적 파일 서빙
 app.use('/webchat', express.static(publicPath));
 
-// CloudType 환경 대응을 위한 추가 정적 파일 서빙
-app.use('/static', express.static(publicPath));
-
 // CSS 파일 직접 서빙 (CloudType 환경 대응)
 app.get('/style.css', (req, res) => {
-    res.setHeader('Content-Type', 'text/css');
-    res.sendFile(path.join(publicPath, 'style.css'));
+    try {
+        res.setHeader('Content-Type', 'text/css');
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.sendFile(path.join(publicPath, 'style.css'));
+    } catch (error) {
+        console.error('CSS 파일 서빙 오류:', error);
+        res.status(404).send('CSS 파일을 찾을 수 없습니다.');
+    }
 });
 
 // Socket.io 클라이언트 파일 직접 서빙
 app.get('/socket.io/socket.io.js', (req, res) => {
-    res.setHeader('Content-Type', 'application/javascript');
-    res.sendFile(path.join(__dirname, 'node_modules', 'socket.io', 'client-dist', 'socket.io.js'));
+    try {
+        res.setHeader('Content-Type', 'application/javascript');
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.sendFile(path.join(__dirname, 'node_modules', 'socket.io', 'client-dist', 'socket.io.js'));
+    } catch (error) {
+        console.error('Socket.io 파일 서빙 오류:', error);
+        res.status(404).send('Socket.io 파일을 찾을 수 없습니다.');
+    }
 });
 
 // 데이터베이스 연결 설정
@@ -494,18 +503,19 @@ io.on('connection', (socket) => {
 // 서버 시작
 const PORT = process.env.PORT || 3000;
 
-// CloudType/Vercel 환경 확인
-if (process.env.CLOUDTYPE || process.env.VERCEL) {
-    // CloudType/Vercel 환경에서는 데이터베이스 연결만 수행 (비동기)
+// CloudType 환경 확인
+if (process.env.CLOUDTYPE) {
+    console.log('CloudType 환경에서 실행 중...');
+    // CloudType 환경에서는 데이터베이스 연결만 수행 (비동기)
     connectDB().catch(error => {
-        console.error('데이터베이스 연결 실패, 서버는 계속 실행:', error);
+        console.error('CloudType 데이터베이스 연결 실패, 서버는 계속 실행:', error);
     });
 } else {
     // 로컬 환경에서는 서버 시작
     server.listen(PORT, '0.0.0.0', async () => {
-        console.log(`서버가 포트 ${PORT}에서 실행 중입니다.`);
+        console.log(`로컬 서버가 포트 ${PORT}에서 실행 중입니다.`);
         connectDB().catch(error => {
-            console.error('데이터베이스 연결 실패, 서버는 계속 실행:', error);
+            console.error('로컬 데이터베이스 연결 실패, 서버는 계속 실행:', error);
         });
     });
 }
