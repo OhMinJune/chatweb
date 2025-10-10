@@ -492,9 +492,9 @@ io.on('connection', (socket) => {
                 [chatroomId, senderId, message]
             );
             
-            // 메시지 정보 조회
+            // 메시지 정보 조회 (채팅방 ID 포함)
             const messageResult = await db.query(`
-                SELECT m.*, u.name as sender_name, u.role as sender_role
+                SELECT m.*, u.name as sender_name, u.role as sender_role, m.chatroom_id
                 FROM messages m
                 JOIN users u ON m.sender_id = u.id
                 WHERE m.id = $1
@@ -513,9 +513,14 @@ io.on('connection', (socket) => {
             
             console.log('✅ 메시지 저장 완료:', rows[0]);
             
-            // 채팅방의 모든 사용자에게 메시지 전송
-            io.to(chatroomId).emit('receive-message', rows[0]);
-            console.log(`📤 채팅방 ${chatroomId}에 메시지 전송 완료`);
+            // 채팅방의 모든 사용자에게 메시지 전송 (채팅방 ID 명시적 포함)
+            const messageData = {
+                ...rows[0],
+                chatroom_id: parseInt(chatroomId) // 명시적으로 채팅방 ID 포함
+            };
+            
+            io.to(chatroomId).emit('receive-message', messageData);
+            console.log(`📤 채팅방 ${chatroomId}에 메시지 전송 완료:`, messageData);
             
             // 관리자에게 채팅방 목록 업데이트 알림
             io.emit('chatroom-updated', { chatroomId });

@@ -98,6 +98,50 @@
             margin-top: 5px;
         }
 
+        .notification-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #ff4757;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .chatroom-item {
+            position: relative;
+        }
+
+        .unread-count {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #ff4757;
+            color: white;
+            border-radius: 50%;
+            min-width: 18px;
+            height: 18px;
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            padding: 0 4px;
+        }
+
         .main-content {
             flex: 1;
             display: flex;
@@ -274,6 +318,8 @@
         let socket;
         let currentChatroomId = null;
         let currentUser = null;
+        let unreadMessages = {}; // 채팅방별 읽지 않은 메시지 수
+        let lastMessageTimes = {}; // 채팅방별 마지막 메시지 시간
         
         // 페이지 로드 시 초기화
         document.addEventListener('DOMContentLoaded', async () => {
@@ -329,7 +375,22 @@
                 
                 // Socket 이벤트 리스너
                 socket.on('receive-message', (message) => {
-                    displayMessage(message);
+                    console.log('📨 새 메시지 수신:', message);
+                    
+                    // 현재 채팅방이 아닌 경우 읽지 않은 메시지 수 증가
+                    if (currentChatroomId !== message.chatroom_id) {
+                        unreadMessages[message.chatroom_id] = (unreadMessages[message.chatroom_id] || 0) + 1;
+                        updateChatroomBadge(message.chatroom_id);
+                        
+                        // 브라우저 알림 표시
+                        showNotification(message);
+                    } else {
+                        // 현재 채팅방인 경우 메시지 표시
+                        displayMessage(message);
+                    }
+                    
+                    // 마지막 메시지 시간 업데이트
+                    lastMessageTimes[message.chatroom_id] = new Date(message.created_at);
                 });
                 
                 // 채팅방 목록 업데이트
@@ -384,11 +445,13 @@
                     
                     const guestName = chatroom.guest_name || '게스트';
                     const lastUpdate = new Date(chatroom.updated_at).toLocaleString('ko-KR');
+                    const unreadCount = unreadMessages[chatroom.id] || 0;
                     
                     chatroomItem.innerHTML = `
                         <div class="chatroom-name">${chatroom.name}</div>
                         <div class="chatroom-guest">${guestName}</div>
                         <div class="chatroom-time">${lastUpdate}</div>
+                        ${unreadCount > 0 ? `<div class="unread-count">${unreadCount}</div>` : ''}
                     `;
                     
                     chatroomList.appendChild(chatroomItem);
@@ -411,6 +474,9 @@
                 currentChatroomId = chatroomId;
                 socket.emit('join-room', chatroomId);
                 
+                // 읽지 않은 메시지 수 초기화
+                unreadMessages[chatroomId] = 0;
+                
                 // UI 업데이트
                 document.querySelectorAll('.chatroom-item').forEach(item => {
                     item.classList.remove('active');
@@ -428,6 +494,9 @@
                 
                 // 메시지 로드
                 await loadMessages(chatroomId);
+                
+                // 채팅방 목록 새로고침 (읽지 않은 메시지 배지 업데이트)
+                loadChatrooms();
                 
             } catch (error) {
                 console.error('채팅방 선택 오류:', error);
@@ -517,6 +586,54 @@
             
             chatMessages.appendChild(messageDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // 채팅방 배지 업데이트
+        function updateChatroomBadge(chatroomId) {
+            const chatroomItems = document.querySelectorAll('.chatroom-item');
+            chatroomItems.forEach(item => {
+                const chatroomName = item.querySelector('.chatroom-name').textContent;
+                // 채팅방 ID를 찾기 위해 클릭 이벤트에서 전달된 ID 사용
+                if (item.onclick && item.onclick.toString().includes(chatroomId)) {
+                    const unreadCount = unreadMessages[chatroomId] || 0;
+                    const existingBadge = item.querySelector('.unread-count');
+                    
+                    if (unreadCount > 0) {
+                        if (existingBadge) {
+                            existingBadge.textContent = unreadCount;
+                        } else {
+                            const badge = document.createElement('div');
+                            badge.className = 'unread-count';
+                            badge.textContent = unreadCount;
+                            item.appendChild(badge);
+                        }
+                    } else if (existingBadge) {
+                        existingBadge.remove();
+                    }
+                }
+            });
+        }
+        
+        // 브라우저 알림 표시
+        function showNotification(message) {
+            // 브라우저 알림 권한 요청
+            if (Notification.permission === 'granted') {
+                new Notification(`새 메시지: ${message.sender_name}`, {
+                    body: message.message,
+                    icon: '/favicon.ico',
+                    tag: `chatroom-${message.chatroom_id}`
+                });
+            } else if (Notification.permission !== 'denied') {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        new Notification(`새 메시지: ${message.sender_name}`, {
+                            body: message.message,
+                            icon: '/favicon.ico',
+                            tag: `chatroom-${message.chatroom_id}`
+                        });
+                    }
+                });
+            }
         }
         
         // 로그아웃

@@ -95,8 +95,8 @@ async function initializeDatabase() {
             
             // 기본 관리자 계정 생성 (비밀번호: admin123)
             await client.query(`
-                INSERT INTO users (username, password, name, role) 
-                VALUES ('admin', '$2a$10$LLbAib.NirTNjFv3kAhqp.PSKvUSnH2YjmRi/I5H8UWUE9VaNyKX6', '관리자', 'admin')
+                INSERT INTO users (username, password, name, phone, role) 
+                VALUES ('admin', '$2a$10$LLbAib.NirTNjFv3kAhqp.PSKvUSnH2YjmRi/I5H8UWUE9VaNyKX6', '관리자', '010-0000-0000', 'admin')
                 ON CONFLICT (username) DO NOTHING
             `);
             

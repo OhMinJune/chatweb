@@ -8,18 +8,8 @@
 const { Client } = require('pg');
 const bcrypt = require('bcryptjs');
 
-// 환경변수에서 데이터베이스 연결 정보 가져오기
-const dbConfig = process.env.DATABASE_URL || {
-    host: process.env.PGHOST || 'localhost',
-    user: process.env.PGUSER || '120191590DB',
-    password: process.env.PGPASSWORD || '123456',
-    database: process.env.PGDATABASE || '120191590DB',
-    port: process.env.PGPORT || 5432,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-    connectionTimeoutMillis: 10000,
-    idleTimeoutMillis: 30000,
-    max: 5
-};
+// Supabase DATABASE_URL 사용
+const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:your-password@db.your-project.supabase.co:5432/postgres';
 
 async function updateAdminPassword() {
     let client;
@@ -27,14 +17,10 @@ async function updateAdminPassword() {
     try {
         console.log('🔧 Admin 계정 비밀번호 업데이트 시작...');
         
-        // 데이터베이스 연결
-        if (process.env.DATABASE_URL) {
-            console.log('📡 DATABASE_URL을 사용하여 연결 중...');
-            client = new Client(process.env.DATABASE_URL);
-        } else {
-            console.log('📡 로컬 설정을 사용하여 연결 중...');
-            client = new Client(dbConfig);
-        }
+        // Supabase 데이터베이스 연결
+        console.log('📡 Supabase DATABASE_URL을 사용하여 연결 중...');
+        console.log('🔗 연결 URL:', DATABASE_URL.replace(/\/\/.*@/, '//***:***@')); // 비밀번호 마스킹
+        client = new Client(DATABASE_URL);
         
         await client.connect();
         console.log('✅ 데이터베이스 연결 성공');
@@ -51,9 +37,9 @@ async function updateAdminPassword() {
             
             // 새 admin 계정 생성
             await client.query(`
-                INSERT INTO users (username, password, name, role) 
-                VALUES ($1, $2, $3, $4)
-            `, ['admin', hashedPassword, '관리자', 'admin']);
+                INSERT INTO users (username, password, name, phone, role) 
+                VALUES ($1, $2, $3, $4, $5)
+            `, ['admin', hashedPassword, '관리자', '010-0000-0000', 'admin']);
             
             console.log('✅ Admin 계정 생성 완료');
         } else {
