@@ -4,7 +4,172 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>채팅 - 실시간 채팅 웹사이트</title>
-    <link rel="stylesheet" href="/style.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            width: 100%;
+            max-width: 1200px;
+            height: 80vh;
+            display: flex;
+        }
+
+        .guest-container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+        }
+
+        .guest-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .guest-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .logout-btn {
+            padding: 8px 16px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .message.own {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            margin: 0 10px;
+        }
+
+        .message-content {
+            max-width: 70%;
+            background: white;
+            padding: 12px 16px;
+            border-radius: 18px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .message.own .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message-sender {
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+            opacity: 0.7;
+        }
+
+        .message-text {
+            line-height: 1.4;
+        }
+
+        .message-time {
+            font-size: 0.7rem;
+            opacity: 0.6;
+            margin-top: 5px;
+        }
+
+        .chat-input {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #e9ecef;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+        }
+
+        .chat-input input:focus {
+            border-color: #667eea;
+        }
+
+        .send-btn {
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .send-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .mt-20 {
+            margin-top: 20px;
+        }
+
+        .welcome-message {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -162,13 +327,21 @@
         // 메시지 로드
         async function loadMessages(chatroomId) {
             try {
+                console.log('📥 메시지 로드 시작:', chatroomId);
                 const response = await fetch(`/api/messages/${chatroomId}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
                 const messages = await response.json();
+                console.log('📨 로드된 메시지 수:', messages.length);
                 
                 const chatMessages = document.getElementById('chatMessages');
                 chatMessages.innerHTML = '';
                 
                 if (messages.length === 0) {
+                    console.log('📝 메시지가 없음, 안내 메시지 표시');
                     chatMessages.innerHTML = `
                         <div class="text-center mt-20">
                             <p>채팅을 시작하세요. 관리자가 곧 응답해드릴 것입니다.</p>
@@ -177,15 +350,25 @@
                     return;
                 }
                 
-                messages.forEach(message => {
+                console.log('📤 메시지 표시 시작');
+                messages.forEach((message, index) => {
+                    console.log(`📨 메시지 ${index + 1} 표시:`, message);
                     displayMessage(message);
                 });
                 
                 // 스크롤을 맨 아래로
                 chatMessages.scrollTop = chatMessages.scrollHeight;
+                console.log('✅ 메시지 로드 완료');
                 
             } catch (error) {
-                console.error('메시지 로드 오류:', error);
+                console.error('❌ 메시지 로드 오류:', error);
+                const chatMessages = document.getElementById('chatMessages');
+                chatMessages.innerHTML = `
+                    <div class="text-center mt-20">
+                        <p style="color: red;">메시지를 불러오는 중 오류가 발생했습니다.</p>
+                        <p>페이지를 새로고침해주세요.</p>
+                    </div>
+                `;
             }
         }
         
