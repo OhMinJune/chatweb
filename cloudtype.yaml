@@ -1,0 +1,28 @@
+# CloudType 배포 설정 파일
+version: 1
+
+# 빌드 설정
+build:
+  command: npm run cloudtype-build
+  working_directory: .
+
+# 실행 설정
+run:
+  command: npm start
+  working_directory: .
+
+# 환경변수
+environment:
+  NODE_ENV: production
+  PORT: 3000
+
+# 포트 설정
+ports:
+  - 3000
+
+# 헬스체크
+healthcheck:
+  path: /api/health
+  interval: 30s
+  timeout: 10s
+  retries: 3
