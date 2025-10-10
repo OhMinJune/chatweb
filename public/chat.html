@@ -44,13 +44,18 @@
         // 게스트 초기화
         async function initializeGuest() {
             try {
-                // 채팅방 정보 가져오기
-                const chatroomResponse = await fetch('/api/guest/chatroom');
-                if (chatroomResponse.status === 401) {
+                // 현재 사용자 정보 가져오기
+                const userResponse = await fetch('/api/user/current');
+                if (userResponse.status === 401) {
                     window.location.href = '/webchat/';
                     return;
                 }
                 
+                const userData = await userResponse.json();
+                currentUser = userData.user;
+                
+                // 채팅방 정보 가져오기
+                const chatroomResponse = await fetch('/api/guest/chatroom');
                 if (chatroomResponse.status === 404) {
                     alert('채팅방을 찾을 수 없습니다. 관리자에게 문의하세요.');
                     return;

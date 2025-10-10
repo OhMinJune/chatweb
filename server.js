@@ -206,6 +206,14 @@ app.post('/api/logout', (req, res) => {
     res.json({ success: true });
 });
 
+// 현재 사용자 정보 조회
+app.get('/api/user/current', requireAuth, (req, res) => {
+    res.json({
+        success: true,
+        user: req.session.user
+    });
+});
+
 // 어드민 채팅방 목록
 app.get('/api/admin/chatrooms', requireAuth, async (req, res) => {
     try {
@@ -385,8 +393,34 @@ io.on('connection', (socket) => {
             console.log('📨 메시지 전송 요청:', data);
             const { chatroomId, message, senderId } = data;
             
+            // 필수 데이터 검증
             if (!chatroomId || !message || !senderId) {
-                throw new Error('필수 데이터가 누락되었습니다.');
+                console.error('❌ 필수 데이터 누락:', { chatroomId, message, senderId });
+                socket.emit('error', { message: '필수 데이터가 누락되었습니다.' });
+                return;
+            }
+            
+            // 데이터베이스 연결 확인
+            if (!db) {
+                console.error('❌ 데이터베이스 연결 없음');
+                socket.emit('error', { message: '데이터베이스 연결이 없습니다.' });
+                return;
+            }
+            
+            // 사용자 존재 확인
+            const userCheck = await db.query('SELECT id, name, role FROM users WHERE id = $1', [senderId]);
+            if (userCheck.rows.length === 0) {
+                console.error('❌ 사용자를 찾을 수 없음:', senderId);
+                socket.emit('error', { message: '사용자를 찾을 수 없습니다.' });
+                return;
+            }
+            
+            // 채팅방 존재 확인
+            const chatroomCheck = await db.query('SELECT id FROM chatrooms WHERE id = $1', [chatroomId]);
+            if (chatroomCheck.rows.length === 0) {
+                console.error('❌ 채팅방을 찾을 수 없음:', chatroomId);
+                socket.emit('error', { message: '채팅방을 찾을 수 없습니다.' });
+                return;
             }
             
             // 메시지 저장

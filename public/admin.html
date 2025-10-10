@@ -56,12 +56,15 @@
         // 관리자 초기화
         async function initializeAdmin() {
             try {
-                // 사용자 정보 확인
-                const userResponse = await fetch('/api/admin/chatrooms');
+                // 현재 사용자 정보 가져오기
+                const userResponse = await fetch('/api/user/current');
                 if (userResponse.status === 401) {
                     window.location.href = '/webchat/';
                     return;
                 }
+                
+                const userData = await userResponse.json();
+                currentUser = userData.user;
                 
                 // Socket.io 연결
                 socket = io({
