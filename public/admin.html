@@ -142,6 +142,123 @@
             padding: 0 4px;
         }
 
+        .new-member-alert {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: #ff6b35;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+
+        .chatroom-actions {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            display: flex;
+            gap: 5px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .chatroom-item:hover .chatroom-actions {
+            opacity: 1;
+        }
+
+        .delete-btn {
+            background: #ff4757;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s ease;
+        }
+
+        .delete-btn:hover {
+            background: #ff3742;
+        }
+
+        .confirm-delete {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .confirm-dialog {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .confirm-dialog h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .confirm-dialog p {
+            margin-bottom: 25px;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .confirm-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .confirm-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .confirm-btn.danger {
+            background: #ff4757;
+            color: white;
+        }
+
+        .confirm-btn.danger:hover {
+            background: #ff3742;
+        }
+
+        .confirm-btn.cancel {
+            background: #e9ecef;
+            color: #333;
+        }
+
+        .confirm-btn.cancel:hover {
+            background: #dee2e6;
+        }
+
         .main-content {
             flex: 1;
             display: flex;
@@ -320,6 +437,8 @@
         let currentUser = null;
         let unreadMessages = {}; // 채팅방별 읽지 않은 메시지 수
         let lastMessageTimes = {}; // 채팅방별 마지막 메시지 시간
+        let newMemberChatrooms = new Set(); // 새 회원 가입 채팅방 추적
+        let lastLoginTime = null; // 마지막 로그인 시간
         
         // 페이지 로드 시 초기화
         document.addEventListener('DOMContentLoaded', async () => {
@@ -418,6 +537,38 @@
                     loadChatrooms();
                 });
                 
+                // 새 회원 가입 알림
+                socket.on('new-member-alert', (data) => {
+                    console.log('🆕 새 회원 가입 알림:', data);
+                    handleNewMemberAlert(data.chatroomId);
+                    
+                    // 브라우저 알림 표시
+                    if (Notification.permission === 'granted') {
+                        new Notification('새 회원 가입!', {
+                            body: data.message,
+                            icon: '/favicon.ico',
+                            tag: `new-member-${data.chatroomId}`
+                        });
+                    }
+                });
+                
+                // 채팅방 삭제 알림
+                socket.on('chatroom-deleted', (data) => {
+                    console.log('🗑️ 채팅방 삭제 알림:', data);
+                    
+                    // 현재 선택된 채팅방이 삭제된 경우 초기화
+                    if (currentChatroomId === data.chatroomId) {
+                        currentChatroomId = null;
+                        document.getElementById('chatTitle').textContent = '채팅방을 선택해주세요';
+                        document.getElementById('messageInput').disabled = true;
+                        document.getElementById('sendBtn').disabled = true;
+                        document.getElementById('chatMessages').innerHTML = '<div class="text-center mt-20"><p>채팅방을 선택하여 대화를 시작하세요.</p></div>';
+                    }
+                    
+                    // 채팅방 목록 새로고침
+                    loadChatrooms();
+                });
+                
             } catch (error) {
                 console.error('초기화 오류:', error);
                 alert('페이지 로드 중 오류가 발생했습니다.');
@@ -441,17 +592,29 @@
                 chatrooms.forEach(chatroom => {
                     const chatroomItem = document.createElement('div');
                     chatroomItem.className = 'chatroom-item';
-                    chatroomItem.onclick = () => selectChatroom(chatroom.id);
+                    chatroomItem.onclick = (e) => {
+                        // 삭제 버튼 클릭 시 이벤트 전파 방지
+                        if (e.target.classList.contains('delete-btn')) {
+                            e.stopPropagation();
+                            return;
+                        }
+                        selectChatroom(chatroom.id);
+                    };
                     
                     const guestName = chatroom.guest_name || '게스트';
                     const lastUpdate = new Date(chatroom.updated_at).toLocaleString('ko-KR');
                     const unreadCount = unreadMessages[chatroom.id] || 0;
+                    const isNewMember = newMemberChatrooms.has(chatroom.id);
                     
                     chatroomItem.innerHTML = `
                         <div class="chatroom-name">${chatroom.name}</div>
                         <div class="chatroom-guest">${guestName}</div>
                         <div class="chatroom-time">${lastUpdate}</div>
                         ${unreadCount > 0 ? `<div class="unread-count">${unreadCount}</div>` : ''}
+                        ${isNewMember ? `<div class="new-member-alert">!</div>` : ''}
+                        <div class="chatroom-actions">
+                            <button class="delete-btn" onclick="confirmDeleteChatroom(${chatroom.id}, '${chatroom.name}')" title="채팅방 삭제">×</button>
+                        </div>
                     `;
                     
                     chatroomList.appendChild(chatroomItem);
@@ -476,6 +639,9 @@
                 
                 // 읽지 않은 메시지 수 초기화
                 unreadMessages[chatroomId] = 0;
+                
+                // 새 회원 알림 확인 처리
+                markNewMemberAsRead(chatroomId);
                 
                 // UI 업데이트
                 document.querySelectorAll('.chatroom-item').forEach(item => {
@@ -633,6 +799,88 @@
                         });
                     }
                 });
+            }
+        }
+        
+        // 채팅방 삭제 확인
+        function confirmDeleteChatroom(chatroomId, chatroomName) {
+            const confirmDialog = document.createElement('div');
+            confirmDialog.className = 'confirm-delete';
+            confirmDialog.innerHTML = `
+                <div class="confirm-dialog">
+                    <h3>채팅방 삭제</h3>
+                    <p>정말로 "${chatroomName}" 채팅방을 삭제하시겠습니까?<br>
+                    삭제된 채팅방의 모든 메시지는 복구할 수 없습니다.</p>
+                    <div class="confirm-buttons">
+                        <button class="confirm-btn danger" onclick="deleteChatroom(${chatroomId})">삭제</button>
+                        <button class="confirm-btn cancel" onclick="closeConfirmDialog()">취소</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(confirmDialog);
+        }
+        
+        // 확인 다이얼로그 닫기
+        function closeConfirmDialog() {
+            const dialog = document.querySelector('.confirm-delete');
+            if (dialog) {
+                dialog.remove();
+            }
+        }
+        
+        // 채팅방 삭제 실행
+        async function deleteChatroom(chatroomId) {
+            try {
+                console.log('🗑️ 채팅방 삭제 시도:', chatroomId);
+                
+                const response = await fetch(`/api/admin/chatrooms/${chatroomId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    console.log('✅ 채팅방 삭제 성공');
+                    
+                    // 현재 선택된 채팅방이 삭제된 경우 초기화
+                    if (currentChatroomId === chatroomId) {
+                        currentChatroomId = null;
+                        document.getElementById('chatTitle').textContent = '채팅방을 선택해주세요';
+                        document.getElementById('messageInput').disabled = true;
+                        document.getElementById('sendBtn').disabled = true;
+                        document.getElementById('chatMessages').innerHTML = '<div class="text-center mt-20"><p>채팅방을 선택하여 대화를 시작하세요.</p></div>';
+                    }
+                    
+                    // 채팅방 목록 새로고침
+                    await loadChatrooms();
+                    
+                    // 확인 다이얼로그 닫기
+                    closeConfirmDialog();
+                    
+                    alert('채팅방이 성공적으로 삭제되었습니다.');
+                } else {
+                    const error = await response.json();
+                    console.error('❌ 채팅방 삭제 실패:', error);
+                    alert('채팅방 삭제에 실패했습니다: ' + error.message);
+                }
+                
+            } catch (error) {
+                console.error('❌ 채팅방 삭제 오류:', error);
+                alert('채팅방 삭제 중 오류가 발생했습니다.');
+            }
+        }
+        
+        // 새 회원 가입 알림 처리
+        function handleNewMemberAlert(chatroomId) {
+            console.log('🆕 새 회원 가입 알림:', chatroomId);
+            newMemberChatrooms.add(chatroomId);
+            loadChatrooms(); // 채팅방 목록 새로고침
+        }
+        
+        // 새 회원 알림 확인 (채팅방 선택 시)
+        function markNewMemberAsRead(chatroomId) {
+            if (newMemberChatrooms.has(chatroomId)) {
+                newMemberChatrooms.delete(chatroomId);
+                loadChatrooms(); // 채팅방 목록 새로고침
             }
         }
         

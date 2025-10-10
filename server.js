@@ -233,6 +233,13 @@ app.post('/api/register', async (req, res) => {
                 guestName: name,
                 message: `${name}님이 새로 가입하여 채팅방이 생성되었습니다.`
             });
+            
+            // 새 회원 가입 알림 (관리자 패널용)
+            io.emit('new-member-alert', {
+                chatroomId: chatroomResult.rows[0].id,
+                guestName: name,
+                message: `새 회원 "${name}"님이 가입했습니다!`
+            });
         }
         
         res.json({ 
@@ -282,6 +289,66 @@ app.get('/api/admin/chatrooms', requireAuth, async (req, res) => {
     } catch (error) {
         console.error('채팅방 목록 조회 오류:', error);
         res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+    }
+});
+
+// 관리자 채팅방 삭제
+app.delete('/api/admin/chatrooms/:id', requireAuth, async (req, res) => {
+    try {
+        const chatroomId = req.params.id;
+        
+        if (req.session.user.role !== 'admin') {
+            return res.status(403).json({ error: '권한이 없습니다.' });
+        }
+        
+        if (!db) {
+            return res.status(500).json({ error: '데이터베이스 연결이 없습니다.' });
+        }
+        
+        // 채팅방 존재 확인 및 권한 확인
+        const chatroomCheck = await db.query(
+            'SELECT id, name FROM chatrooms WHERE id = $1 AND admin_id = $2', 
+            [chatroomId, req.session.user.id]
+        );
+        
+        if (chatroomCheck.rows.length === 0) {
+            return res.status(404).json({ error: '채팅방을 찾을 수 없거나 삭제 권한이 없습니다.' });
+        }
+        
+        const chatroomName = chatroomCheck.rows[0].name;
+        
+        // 트랜잭션으로 관련 데이터 모두 삭제
+        await db.query('BEGIN');
+        
+        try {
+            // 메시지 삭제
+            await db.query('DELETE FROM messages WHERE chatroom_id = $1', [chatroomId]);
+            console.log(`🗑️ 채팅방 ${chatroomId}의 메시지들 삭제 완료`);
+            
+            // 채팅방 삭제
+            await db.query('DELETE FROM chatrooms WHERE id = $1', [chatroomId]);
+            console.log(`🗑️ 채팅방 ${chatroomId} 삭제 완료`);
+            
+            await db.query('COMMIT');
+            
+            // Socket.io로 모든 관리자에게 채팅방 삭제 알림
+            io.emit('chatroom-deleted', { 
+                chatroomId: parseInt(chatroomId),
+                chatroomName: chatroomName,
+                message: `채팅방 "${chatroomName}"이 삭제되었습니다.`
+            });
+            
+            console.log(`✅ 채팅방 "${chatroomName}" 삭제 성공`);
+            res.json({ message: '채팅방이 성공적으로 삭제되었습니다.' });
+            
+        } catch (error) {
+            await db.query('ROLLBACK');
+            throw error;
+        }
+        
+    } catch (error) {
+        console.error('채팅방 삭제 오류:', error);
+        res.status(500).json({ error: '채팅방 삭제에 실패했습니다.' });
     }
 });
 
