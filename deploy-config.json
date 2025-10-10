@@ -1,0 +1,39 @@
+{
+  "deployment": {
+    "platform": "cloudtype",
+    "autoDeploy": true,
+    "database": {
+      "provider": "supabase",
+      "autoInit": true,
+      "schema": "database_schema.sql"
+    },
+    "environment": {
+      "required": [
+        "DATABASE_URL",
+        "SESSION_SECRET",
+        "NODE_ENV"
+      ],
+      "optional": [
+        "PORT",
+        "CORS_ORIGIN"
+      ]
+    },
+    "scripts": {
+      "preDeploy": "npm run init-db",
+      "postDeploy": "echo 'Deployment completed successfully'"
+    }
+  },
+  "instructions": {
+    "setup": [
+      "1. Supabase에서 프로젝트 생성",
+      "2. DATABASE_URL 환경변수 설정",
+      "3. SESSION_SECRET 환경변수 설정",
+      "4. CloudType에서 자동 배포 실행"
+    ],
+    "testing": [
+      "1. /api/health 엔드포인트로 연결 상태 확인",
+      "2. 회원가입/로그인 기능 테스트",
+      "3. 채팅 기능 테스트"
+    ]
+  }
+}
