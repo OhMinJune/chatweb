@@ -3,7 +3,7 @@ version: 1
 
 # 빌드 설정
 build:
-  command: npm run cloudtype-build
+  command: npm run build
   working_directory: .
 
 # 실행 설정

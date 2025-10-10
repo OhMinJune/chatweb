@@ -6,11 +6,11 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "build": "echo 'CloudType build completed'",
+    "build": "npm install --omit=dev && echo 'CloudType build completed'",
     "vercel-build": "echo 'Vercel build completed'",
-    "cloudtype-build": "echo 'CloudType build completed'",
+    "cloudtype-build": "npm install --omit=dev && echo 'CloudType build completed'",
     "init-db": "node init-database.js",
-    "postinstall": "node init-database.js",
+    "postinstall": "echo 'Postinstall completed'",
     "check-env": "node cloudtype-env-check.js",
     "debug-chat": "node debug-realtime-chat.js"
   },
