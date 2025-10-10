@@ -93,10 +93,10 @@ async function initializeDatabase() {
             await client.query(`CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at)`);
             await client.query(`CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)`);
             
-            // 기본 관리자 계정 생성
+            // 기본 관리자 계정 생성 (비밀번호: admin123)
             await client.query(`
                 INSERT INTO users (username, password, name, role) 
-                VALUES ('admin', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '관리자', 'admin')
+                VALUES ('admin', '$2a$10$LLbAib.NirTNjFv3kAhqp.PSKvUSnH2YjmRi/I5H8UWUE9VaNyKX6', '관리자', 'admin')
                 ON CONFLICT (username) DO NOTHING
             `);
             

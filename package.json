@@ -10,6 +10,7 @@
     "vercel-build": "echo 'Vercel build completed'",
     "cloudtype-build": "npm install --omit=dev && echo 'CloudType build completed'",
     "init-db": "node init-database.js",
+    "update-admin": "node update-admin-password.js",
     "postinstall": "echo 'Postinstall completed'",
     "check-env": "node cloudtype-env-check.js",
     "debug-chat": "node debug-realtime-chat.js"
